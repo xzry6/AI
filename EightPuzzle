@@ -1,0 +1,545 @@
+package EightPuzzle;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+
+
+
+public class EightPuzzle{
+	
+	
+	int[][] a = {{5,2,8,4,1,7,0,3,6},{1,2,3,4,5,6,7,8,0}};
+	int[][][] position = new int[2][9][2];
+	static List<AStarSearch> list = new ArrayList<AStarSearch>();
+	
+	public static void main(String args[]){
+		int act = 0;
+		int i=0,j=0,k=0;
+		EightPuzzle eight = new EightPuzzle();
+		AStarSearch aStar = new AStarSearch();
+		hillClimbing hh = new hillClimbing();
+		hillClimbing CC = new hillClimbing();
+		eight.position = EightPuzzle.getposition(eight.a);
+		
+		//random generate 2 arrays for initial and goal states respectively
+		eight.generatePuzzle();
+		eight.printArray();
+		
+		
+		aStar.getArray(eight.a, eight.position);
+		hh.getArray(eight.a, eight.position);
+		CC.getArray(eight.a, eight.position);
+		
+		
+		int dis = aStar.manhattanDistance(eight.position);
+		System.out.println("initial manhattan distance between two matrices is: "+dis);
+		System.out.println("\n");
+
+		//check if the problem solvable
+		boolean bb = checkSolvable(eight.a);
+		if(bb){
+			do{
+			AStarSearch TT = new AStarSearch();
+			//System.out.println("\nSTEP "+(i+1)+": ");
+			//extend tiles first
+			aStar.extendBranches(act);
+			TT = AStarSearch.getValue(aStar);
+			//create a list recording all the steps
+			list.add(TT);
+			//choose state
+			int[] count = aStar.chooseState(list);
+			TT = AStarSearch.getValue(list.get(count[0]));
+			TT = aStar.update(count, TT, list.size()-1);
+			//update the list
+			list.remove(count[0]);
+			list.add(TT);
+			aStar = AStarSearch.getValue(TT);
+			eight.position = aStar.position;
+			act = aStar.action;
+			//aStar.print(count[0] == list.size()-1);
+			i++;
+			//System.out.println("manhattan distance is: "+aStar.manhattanDistance(eight.position));
+		}while(aStar.manhattanDistance(eight.position) != 0);
+			hh.print(true);
+			for(j=0; j<20000; ++j){
+				hh.extendBranches();
+				boolean bool = hh.chooseState(hh.manhattanDistance(hh.position));
+				//hh.print(bool);
+				//System.out.println("manhattan distance is: "+hh.manhattanDistance(hh.position));
+				if(hh.manhattanDistance(hh.position) == 0 || !bool){
+					break;
+				}
+			}
+			CC.print(true);
+			do{
+			//for(k=0; k<20000; ++k){
+				
+				CC.extendBranches();
+				boolean bool = CC.randomChooseState(CC.manhattanDistance(CC.position));
+				++k;
+				//CC.print(bool);
+				//System.out.println("manhattan distance is: "+CC.manhattanDistance(CC.position));
+				/*if(CC.manhattanDistance(CC.position) == 0 || CC.T == 0){
+					break;
+				}*/
+			}while(CC.manhattanDistance(CC.position) != 0 && CC.T != 0);
+			
+		}
+		System.out.println("A* Search\nTotal timestep is: "+i+
+				"\nIt makes "+aStar.costSoFar+" moves\nThe total cost is "+aStar.costSoFar+"\n");
+		System.out.print("hill-climbing\nTotal timestep is: "+j+
+				"\nmanhattan distance is: "+hh.manhattanDistance(hh.position)+"\nIt arrives the");
+			System.out.println(" local maxima\n");
+		System.out.print("simulated annealing\nTotal timestep is: "+k+
+				"\nmanhattan distance is: "+CC.manhattanDistance(CC.position)+"\nIt arrives the");
+		if(CC.manhattanDistance(CC.position) == 0){
+			System.out.println(" global maxima");
+		} else{
+			System.out.println(" local maxima");
+		}
+	}
+	
+	void generatePuzzle(){
+		Random r = new Random();
+		int temp = 0;
+		for(int k=0; k<2; ++k){
+			boolean[] bool = new boolean[9];
+			for(int i=0; i<9; ++i){				
+				do{
+					temp = r.nextInt(9);
+				}while(bool[temp]);
+				bool[temp] = true;
+				a[k][i] = temp;
+				position[k][temp][0] = i/3;
+				position[k][temp][1] = i%3;
+			}
+		}
+	}
+	
+	void printArray(){
+		//System.out.println(Arrays.deepToString(a[0]));
+		//System.out.println(Arrays.toString(a[0][0]));
+		System.out.println("the origin matrix is:");
+		for(int i=0; i<9; ++i){
+			System.out.print(a[0][i]);
+			if(i%3+1 == 3){
+				System.out.println();
+				continue;
+			}
+			System.out.print(" ");
+		}
+		System.out.println("the target matrix is:");
+		for(int i=0; i<9; ++i){
+			System.out.print(a[1][i]);
+			if(i%3+1 == 3){
+				System.out.println();
+				continue;
+			}
+			System.out.print(" ");
+		}
+	}
+	
+	static int[][][] getposition(int[][] Array){
+		int[][][] position = new int[2][9][2];
+		for(int i=0; i<2; ++i){
+			for(int j=0; j<9; ++j){
+				position[i][Array[i][j]][0] = j/3;
+				position[i][Array[i][j]][1] = j%3;
+			}
+		}
+		return position;
+	}
+	 static boolean checkSolvable(int[][] Array){
+	       // System.out.println("checkSolvable called with: "+Arrays.toString(Array));
+	        int number = 0;
+
+	        for(int i=0; i<Array[0].length; ++i){
+	            for(int j=i+1; j<Array[0].length; ++j){
+	                if(Array[0][i] != 0 && Array[0][j] != 0) {
+	                	if(Array[0][j]>Array[0][i]){
+	                		number++;
+	                	}
+	                }
+	            }
+	        }
+	        for(int i=0; i<Array[0].length; ++i){
+	            for(int j=i+1; j<Array[0].length; ++j){
+	                if(Array[1][i] != 0 && Array[1][j] != 0) {
+	                	if(Array[1][j]>Array[1][i]){
+	                		number++;
+	                	}
+	                }
+	            }
+	        }
+	        if(number%2 == 1){
+	            System.out.println("It's Unsolvable");
+	            return false;
+	        }else{
+	            System.out.println("It's Solvable");
+	            return true;
+	        }
+	    }
+	
+}
+
+
+
+
+class AStarSearch{
+	int[][] a = new int[2][9];
+	int[][][] position = new int[2][9][2];
+	int[] branchesList = new int[4];
+	double[] dis = {10000000, 10000000, 10000000, 10000000};
+	int action = 0;
+	int costSoFar = 0;
+	
+	void getArray(int[][] a, int[][][] position){
+		for(int i=0; i<2; ++i){
+			for(int j=0; j<9; ++j){
+				this.a[i][j] = a[i][j];
+			}
+		}
+		for(int i=0; i<2; ++i){
+			for(int j=0; j<9; ++j){
+				for(int k=0; k<2; ++k){
+					this.position[i][j][k] = position[i][j][k];
+				}
+			}
+		}
+	}
+
+	static AStarSearch getValue(AStarSearch AA){
+		AStarSearch TT = new AStarSearch();
+		for(int i=0; i<2; ++i){
+			for(int j=0; j<9; ++j){
+				TT.a[i][j] = AA.a[i][j];
+			}
+		}
+		for(int i=0; i<2; ++i){
+			for(int j=0; j<9; ++j){
+				for(int k=0; k<2; ++k){
+					TT.position[i][j][k] = AA.position[i][j][k];
+				}
+			}
+		}
+		for(int i=0; i<4; ++i){
+			TT.branchesList[i] = AA.branchesList[i];
+			TT.dis[i] = AA.dis[i];
+		}
+		TT.action = AA.action;
+		TT.costSoFar = AA.costSoFar;
+		return TT;
+	}
+	
+	int manhattanDistance(int[][][] array){
+		int temp;
+		int total = 0;
+		for(int i=0; i<9; ++i){
+			temp = Math.abs(array[0][i][0]-array[1][i][0])+
+					Math.abs(array[0][i][1]-array[1][i][1]);
+			total += temp;
+		}
+		return total;
+	}
+	
+	void extendBranches(int action){
+		int[][][] array1 = new int[2][9][2];
+		int m = position[0][0][0];
+		int n = position[0][0][1];
+		this.action = 0;
+		branchesList[0] = 0;
+		branchesList[1] = 0;
+		branchesList[2] = 0;
+		branchesList[3] = 0;
+		costSoFar = costSoFar+1;
+			if(m-1>=0){
+				int up = a[0][(m-1)*3+n];
+				if(up != action){
+					branchesList[0] = up;
+				}
+			}
+			if(m+1<=2){
+				int down = a[0][(m+1)*3+n];
+				if(down != action){
+					branchesList[1] = down;
+				}
+			}
+			if(n-1>=0){
+				int left = a[0][m*3+n-1];
+				if(left != action){
+					branchesList[2] = left;
+				}
+			}
+			if(n+1<=2){
+				int right = a[0][m*3+n+1];
+				if(right != action){
+					branchesList[3] = right;
+				}
+			//}
+		}
+
+		for(int i=0; i < branchesList.length; ++i){
+			if(branchesList[i] <= 0){
+				dis[i] = 10000000;
+			} else {
+				for(int k=0; k<2; ++k){
+					for(int e=0; e<9; ++e){
+						for(int j=0; j<2; ++j){
+							array1[k][e][j] = position[k][e][j];
+						}
+					}
+				}
+				array1 = exchangePosition(branchesList[i],array1);
+				dis[i] = manhattanDistance(array1)+1.0*costSoFar;
+			 }
+		 }
+		//System.out.println("extend branches: "+action+"  --->  "+Arrays.toString(branchesList));
+	}
+	
+	int[] chooseState(List<AStarSearch> aa){
+		double temp = 1000000000;
+		int[] count = new int [2];
+		
+		for(int i=aa.size()-1; i>=0; --i){
+			double[] dd = (double[]) aa.get(i).dis;
+			for(int j=0; j<dd.length; ++j){
+				//System.out.println(dd[j]);
+				if(dd[j]<temp){
+					temp = dd[j];
+					count[0] = i;
+					count[1] = j;
+				 }
+			}
+		}
+		return count;
+}
+	
+	AStarSearch update(int[] count, AStarSearch AA, int size){
+		//getArray(AA);
+		AA.dis[count[1]] = 1000000000;
+		
+		if(count[0] == size){
+			AA.action = AA.branchesList[count[1]];
+			AA.branchesList[count[1]] = -1;
+		} else{
+			AA.a[0][AA.position[0][AA.action][0]*3+AA.position[0][AA.action][1]] = 0;
+			AA.a[0][AA.position[0][0][0]*3+AA.position[0][0][1]] = AA.action;
+			AA.position = exchangePosition(AA.action,AA.position);
+			AA.action = AA.branchesList[count[1]];
+			AA.branchesList[count[1]] = -1;
+			//AA.costSoFar = AA.costSoFar-1;
+		}
+
+		AA.a[0][AA.position[0][AA.action][0]*3+AA.position[0][AA.action][1]] = 0;
+		AA.a[0][AA.position[0][0][0]*3+AA.position[0][0][1]] = AA.action;
+		AA.position = exchangePosition(AA.action,AA.position);
+		//System.out.println("cost so far is: "+AA.costSoFar);
+		return AA;
+	}
+	
+	
+	static int[][][] exchangePosition(int num, int[][][] array){
+		int[] temp;
+		
+		temp = array[0][num];
+		array[0][num] = array[0][0];
+		array[0][0] = temp;
+		//System.out.println("array is: \n"+Arrays.deepToString(array[0]));
+		return array;
+	}
+	
+	void print(boolean bool){
+		//System.out.println("adjacent tiles are: "+Arrays.toString(branchesList));
+		if(bool){
+			System.out.println("will move the tile: "+action);
+		} else{
+			System.out.println("will move back to: "+ action);
+		}
+		for(int i=0; i<9; ++i){
+			System.out.print(a[0][i]);
+			if(i%3+1 == 3){
+				System.out.println();
+				continue;
+			}
+			System.out.print(" ");
+		}
+		//System.out.println("array is: \n"+Arrays.deepToString(position[0]));
+		//System.out.println("the distance is: "+Arrays.toString(dis));
+	}
+}
+
+class hillClimbing{
+	int[][] a = new int[2][9];
+	int[][][] position = new int[2][9][2];
+	int[] branchesList = new int[4];
+	int[] dis = {10000000, 10000000, 10000000, 10000000};
+	int action = 0;
+	int moves = 0;
+	double T = 10;
+	
+	void getArray(int[][] a, int[][][] position){
+		for(int i=0; i<2; ++i){
+			for(int j=0; j<9; ++j){
+				this.a[i][j] = a[i][j];
+			}
+		}
+		for(int i=0; i<2; ++i){
+			for(int j=0; j<9; ++j){
+				for(int k=0; k<2; ++k){
+					this.position[i][j][k] = position[i][j][k];
+				}
+			}
+		}
+	}
+
+	static AStarSearch getValue(AStarSearch AA){
+		AStarSearch TT = new AStarSearch();
+		for(int i=0; i<2; ++i){
+			for(int j=0; j<9; ++j){
+				TT.a[i][j] = AA.a[i][j];
+			}
+		}
+		for(int i=0; i<2; ++i){
+			for(int j=0; j<9; ++j){
+				for(int k=0; k<2; ++k){
+					TT.position[i][j][k] = AA.position[i][j][k];
+				}
+			}
+		}
+		for(int i=0; i<4; ++i){
+			TT.branchesList[i] = AA.branchesList[i];
+			TT.dis[i] = AA.dis[i];
+		}
+		TT.action = AA.action;
+		TT.costSoFar = AA.costSoFar;
+		return TT;
+	}
+	
+	int manhattanDistance(int[][][] array){
+		int temp;
+		int total = 0;
+		for(int i=0; i<9; ++i){
+			temp = Math.abs(array[0][i][0]-array[1][i][0])+
+					Math.abs(array[0][i][1]-array[1][i][1]);
+			total += temp;
+		}
+		return total;
+	}
+	
+	void extendBranches(){
+		int[][][] array1 = new int[2][9][2];
+		int m = position[0][0][0];
+		int n = position[0][0][1];
+		this.action = 0;
+		branchesList[0] = 0;
+		branchesList[1] = 0;
+		branchesList[2] = 0;
+		branchesList[3] = 0;
+		moves = moves+1;
+			if(m-1>=0){
+				int up = a[0][(m-1)*3+n];
+					branchesList[0] = up;
+			}
+			if(m+1<=2){
+				int down = a[0][(m+1)*3+n];
+					branchesList[1] = down;
+			}
+			if(n-1>=0){
+				int left = a[0][m*3+n-1];
+					branchesList[2] = left;
+			}
+			if(n+1<=2){
+				int right = a[0][m*3+n+1];
+					branchesList[3] = right;
+		}
+
+		for(int i=0; i < branchesList.length; ++i){
+			if(branchesList[i] <= 0){
+				dis[i] = 10000000;
+			} else {
+				for(int k=0; k<2; ++k){
+					for(int e=0; e<9; ++e){
+						for(int j=0; j<2; ++j){
+							array1[k][e][j] = position[k][e][j];
+						}
+					}
+				}
+				array1 = exchangePosition(branchesList[i],array1);
+				dis[i] = manhattanDistance(array1);
+			 }
+		 }
+	}
+	
+	boolean chooseState(int diss){
+		double temp = 1000000000;
+		int count = 0;
+		boolean bool = false;
+		for(int i=0; i<dis.length; ++i){
+			if(dis[i]<temp){
+				temp = dis[i];
+				count = i;
+			 }
+		}
+		System.out.println(moves+" moves total");
+		if(temp<diss){
+			action = branchesList[count];
+			a[0][position[0][action][0]*3+position[0][action][1]] = 0;
+			a[0][position[0][0][0]*3+position[0][0][1]] = action;
+			position = exchangePosition(action,position);
+			bool = true;
+		} else{
+			System.out.println("--------ACHIEVE THE LOCAL MAXIMA--------");
+		}
+		return bool;
+}
+	boolean randomChooseState(int diss){
+		Random r1 = new Random();
+		boolean bool = false;
+		int r;
+		double pro;
+		do{r = Math.abs(r1.nextInt())%4;
+		}while(dis[r] == 10000000);
+		double com = (double)(Math.random()*100);
+		if(diss-dis[r]>0){
+			bool = true;
+		} else{
+			pro = Math.pow(Math.E, (double)(diss-dis[r])/T);
+			if(com<pro*100){
+				bool = true;
+			}
+		}
+		if(bool){
+			action = branchesList[r];
+			a[0][position[0][action][0]*3+position[0][action][1]] = 0;
+			a[0][position[0][0][0]*3+position[0][0][1]] = action;
+			position = exchangePosition(action,position);
+		}
+		T = T-0.00004;
+		return bool;
+	}
+
+	static int[][][] exchangePosition(int num, int[][][] array){
+		int[] temp;
+		temp = array[0][num];
+		array[0][num] = array[0][0];
+		array[0][0] = temp;
+		return array;
+	}
+	
+	void print(boolean bool){
+		if(bool){
+			System.out.println("extend branches: "+action+"  --->  "+Arrays.toString(branchesList));
+			System.out.println("will move the tile: "+action);
+			System.out.println("adjcent tiles distance is: "+Arrays.toString(dis));
+		}
+		for(int i=0; i<9; ++i){
+			System.out.print(a[0][i]);
+			if(i%3+1 == 3){
+				System.out.println();
+				continue;
+			}
+			System.out.print(" ");
+		}
+	}
+}
